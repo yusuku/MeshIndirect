@@ -1,0 +1,59 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWStructuredBuffer<float3> PositionResult;
+RWStructuredBuffer<float4> ColorResult;
+Texture2D<float4> inputTexture;
+
+RWTexture2D<float4> Result;
+
+
+int width, height;
+
+float3 Texture2XYZ(uint3 id)
+{
+    float PI = 3.14159265358979323846f;
+    float phi = (1 - id.x / (float) width) * 2 * PI - PI;
+    float theta = PI - id.y / (float) height * PI;
+    float r = 20;
+    
+    float x = r * sin(theta) * cos(phi);
+    float y = r * cos(theta);
+    float z = r * sin(theta) * sin(phi);
+    
+    return float3(x,y,z);
+
+}
+float2 Texture2poler(uint3 id)
+{
+    float PI = 3.14159265358979323846f;
+    float phi = (1 - id.x / (float) width) * 2 * PI - PI;
+    float theta = PI - id.y / (float) height * PI;
+    float r = 20;
+    
+    float x = r * sin(theta) * cos(phi);
+    float y = r * cos(theta);
+    float z = r * sin(theta) * sin(phi);
+    
+    return float2(phi, theta);
+
+}
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+
+    PositionResult[id.x * width + id.y] = float3(id.x,id.y ,0); //Texture2XYZ(id);
+    ColorResult[id.x * width + id.y] = inputTexture[id.xy];
+    float x = PositionResult[id.x * width + id.y].x/20;
+    float y = PositionResult[id.x * width + id.y].y/20;
+    float z = PositionResult[id.x * width + id.y].z/20;
+    Result[id.xy] = float4((x + 1)/2, 0, 0, 1);
+
+}
+
+
