@@ -47,12 +47,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 {
     // TODO: insert actual code here!
 
-    PositionResult[id.x * width + id.y] = float3(id.x,id.y ,0); //Texture2XYZ(id);
-    ColorResult[id.x * width + id.y] = inputTexture[id.xy];
-    float x = PositionResult[id.x * width + id.y].x/20;
-    float y = PositionResult[id.x * width + id.y].y/20;
-    float z = PositionResult[id.x * width + id.y].z/20;
-    Result[id.xy] = float4((x + 1)/2, 0, 0, 1);
+    PositionResult[id.x + id.y * width] = Texture2XYZ(id); //Texture2XYZ(id);
+    ColorResult[id.x + id.y * width] = inputTexture[id.xy];
+
+    Result[id.xy] = ColorResult[id.x + id.y * width];
 
 }
 
