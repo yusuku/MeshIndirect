@@ -5,34 +5,56 @@ public class RuntimeMeshIndirect : MonoBehaviour
 {
     public Material material; // 描画に使用するマテリアル
     public Mesh mesh; // 描画に使用するメッシュ
+    public ComputeShader cs;
+    public RenderTexture inputtex;
+    TextureGPUInstancing draw;
+
+
+    void Start()
+    {
+        draw = new TextureGPUInstancing(material, mesh, cs, inputtex);
+    }
+
+    void OnDestroy()
+    {
+        draw.Release();
+    }
+
+    void Update()
+    {
+        draw.DrawMeshes();
+    }
+
+    
+}
+public class TextureGPUInstancing
+{
+    Material material; // 描画に使用するマテリアル
+    Mesh mesh; // 描画に使用するメッシュ
+    ComputeShader computeShader;
+    RenderTexture inputTexture; // 入力テクスチャ
 
     private GraphicsBuffer commandBuf;
     private GraphicsBuffer.IndirectDrawIndexedArgs[] commandData;
 
-    public RenderTexture inputTexture; // 入力テクスチャ
     private GraphicsBuffer _positionBuffer;
     private GraphicsBuffer _colorBuffer;
-
-    public Material debugMaterial; // デバッグ用マテリアル
-    private RenderTexture outputTexture;
 
     private int _kernelId;
     private int width, height;
     private uint xThread, yThread;
-    public ComputeShader computeShader;
 
-    void Start()
+
+    public TextureGPUInstancing(Material material, Mesh mesh, ComputeShader computeShader, RenderTexture inputTexture)
     {
-        // テクスチャのサイズを取得
-        width = inputTexture.width;
-        height = inputTexture.height;
 
-        // 出力テクスチャの作成
-        outputTexture = new RenderTexture(width, height, 0)
-        {
-            enableRandomWrite = true
-        };
-        outputTexture.Create();
+        this.material = material;
+        this.mesh = mesh;
+        this.computeShader = computeShader;
+        this.inputTexture = inputTexture;
+
+        this.width = inputTexture.width;
+        this.height = inputTexture.height;
 
         // コマンドバッファの初期化
         commandBuf = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, GraphicsBuffer.IndirectDrawIndexedArgs.size);
@@ -53,47 +75,13 @@ public class RuntimeMeshIndirect : MonoBehaviour
         computeShader.SetTexture(_kernelId, "inputTexture", inputTexture);
         computeShader.SetBuffer(_kernelId, "PositionResult", _positionBuffer);
         computeShader.SetBuffer(_kernelId, "ColorResult", _colorBuffer);
-        computeShader.SetTexture(_kernelId, "Result", outputTexture);
 
-        // デバッグ用マテリアルのセットアップ
-        if (debugMaterial != null)
-        {
-            debugMaterial.mainTexture = outputTexture;
-        }
     }
 
-    void OnDestroy()
+    public void DrawMeshes()
     {
-        // リソースの解放
-        commandBuf?.Release();
-        commandBuf = null;
-
-        _positionBuffer?.Release();
-        _positionBuffer = null;
-
-        _colorBuffer?.Release();
-        _colorBuffer = null;
-
-        if (outputTexture != null)
-        {
-            outputTexture.Release();
-            outputTexture = null;
-        }
-    }
-
-    void Update()
-    {
-        // Compute Shader のディスパッチ
         computeShader.Dispatch(_kernelId, Mathf.CeilToInt(width / (float)xThread), Mathf.CeilToInt(height / (float)yThread), 1);
 
-        // デバッグ用マテリアルの更新
-        if (debugMaterial != null)
-        {
-            Debug.Log("ddd");
-            debugMaterial.mainTexture = outputTexture;
-        }
-
-        // メッシュのインスタンシング描画
         RenderParams renderParams = new RenderParams(material)
         {
             worldBounds = new Bounds(Vector3.zero, 10000 * Vector3.one), // 大きなバウンドを設定
@@ -104,5 +92,18 @@ public class RuntimeMeshIndirect : MonoBehaviour
         renderParams.matProps.SetBuffer("_Colors", _colorBuffer);
 
         Graphics.RenderMeshIndirect(renderParams, mesh, commandBuf);
+
+    }
+
+    public void Release()
+    {
+        commandBuf?.Release();
+        commandBuf = null;
+
+        _positionBuffer?.Release();
+        _positionBuffer = null;
+
+        _colorBuffer?.Release();
+        _colorBuffer = null;
     }
 }
